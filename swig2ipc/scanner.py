@@ -43,6 +43,8 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     files_scanned: int = 0
+    #: Files that could not be read or parsed, so their SWIG usage is unknown.
+    unparsed_files: list[str] = field(default_factory=list)
 
 
 class _PcbnewVisitor(ast.NodeVisitor):
@@ -129,21 +131,30 @@ def iter_python_files(root: Path) -> Iterator[Path]:
                 yield Path(dirpath) / name
 
 
-def scan_file(path: Path, relpath: str) -> tuple[list[Finding], list[str]]:
-    """Scan one file; returns its findings and any warnings (``path:line: reason``)."""
+def scan_file(path: Path, relpath: str) -> tuple[list[Finding], list[str], bool]:
+    """Scan one file.
+
+    Returns its findings, any warnings (``path:line: reason``) and whether the file
+    could be parsed at all.
+
+    The source is handed to :func:`ast.parse` as bytes so that the interpreter's own
+    decoding rules apply: a UTF-8 BOM and a PEP 263 coding cookie
+    (``# -*- coding: latin-1 -*-``) are honoured exactly as CPython would honour them.
+    Decoding the bytes ourselves would turn both into unparseable files.
+    """
     try:
-        source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        return [], [f"{relpath}:1: could not read file ({exc.__class__.__name__}: {exc})"]
+        source = path.read_bytes()
+    except OSError as exc:
+        return [], [f"{relpath}:1: could not read file ({exc.__class__.__name__}: {exc})"], False
     try:
         tree = ast.parse(source, filename=str(path))
     except SyntaxError as exc:
-        return [], [f"{relpath}:{exc.lineno or 1}: syntax error ({exc.msg})"]
+        return [], [f"{relpath}:{exc.lineno or 1}: syntax error ({exc.msg})"], False
     except ValueError as exc:  # e.g. source containing null bytes
-        return [], [f"{relpath}:1: could not parse file ({exc})"]
+        return [], [f"{relpath}:1: could not parse file ({exc})"], False
     visitor = _PcbnewVisitor(relpath)
     visitor.visit(tree)
-    return visitor.findings, visitor.warnings
+    return visitor.findings, visitor.warnings, True
 
 
 def scan_tree(root: Path) -> ScanResult:
@@ -153,9 +164,12 @@ def scan_tree(root: Path) -> ScanResult:
     for path in iter_python_files(root):
         relpath = path.relative_to(root).as_posix()
         result.files_scanned += 1
-        findings, warnings = scan_file(path, relpath)
+        findings, warnings, parsed = scan_file(path, relpath)
         result.warnings.extend(warnings)
         result.findings.extend(findings)
+        if not parsed:
+            result.unparsed_files.append(relpath)
     result.findings.sort(key=lambda f: (f.file, f.line, f.kind, f.symbol))
     result.warnings.sort()
+    result.unparsed_files.sort()
     return result

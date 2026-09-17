@@ -101,3 +101,40 @@ def test_skip_dirs_and_unreadable_file(tmp_path: Path):
 def test_star_import_emits_a_warning(sample_plugin: Path):
     result = scan_tree(sample_plugin)
     assert any(w.startswith("subdir/nested.py:1:") and "import *" in w for w in result.warnings)
+
+
+def test_utf8_bom_is_parsed(tmp_path: Path):
+    """Windows-authored sources often start with a BOM; ast handles it, we must not strip it."""
+    (tmp_path / "plugin.py").write_bytes(
+        b"\xef\xbb\xbfimport pcbnew\npcbnew.LoadBoard('x')\n"
+    )
+    result = scan_tree(tmp_path)
+    assert findings_for(result, "plugin.py") == [
+        (1, "pcbnew", "import"),
+        (2, "LoadBoard", "module-call"),
+    ]
+    assert result.warnings == []
+    assert result.unparsed_files == []
+
+
+def test_pep263_coding_cookie_is_honoured(tmp_path: Path):
+    (tmp_path / "plugin.py").write_bytes(
+        b"# -*- coding: latin-1 -*-\n# caf\xe9 \xa9\nimport pcbnew as pcb\npcb.FromMM(1)\n"
+    )
+    result = scan_tree(tmp_path)
+    assert findings_for(result, "plugin.py") == [
+        (3, "pcbnew", "import"),
+        (4, "FromMM", "module-call"),
+    ]
+    assert result.warnings == []
+    assert result.unparsed_files == []
+
+
+def test_unparsed_files_are_tracked(tmp_path: Path):
+    (tmp_path / "good.py").write_text("import pcbnew\n")
+    (tmp_path / "broken.py").write_text("def f(:\n")
+    (tmp_path / "unknown_codec.py").write_bytes(b"# -*- coding: nosuchcodec -*-\nimport pcbnew\n")
+
+    result = scan_tree(tmp_path)
+    assert result.unparsed_files == ["broken.py", "unknown_codec.py"]
+    assert len(result.warnings) == 2
