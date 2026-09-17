@@ -1,0 +1,315 @@
+{
+  "_meta": {
+    "kicad_python_version": "0.8.0",
+    "checked_on": "2026-09-17",
+    "description": "Best-effort snapshot of SWIG pcbnew symbols and their kicad-python (kipy) equivalents. Statuses are valid for the kicad_python_version above and may change as the IPC API grows.",
+    "docs_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+
+  "pcbnew": {
+    "status": "mapped",
+    "ipc": "kipy.kicad.KiCad",
+    "note": "`import pcbnew` becomes `from kipy import KiCad`; every call goes through a KiCad client object instead of module-level functions.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/kicad.py"
+  },
+  "GetBoard": {
+    "status": "mapped",
+    "ipc": "kipy.kicad.KiCad.get_board",
+    "note": "Connect with KiCad() first: board = KiCad().get_board(). The IPC API talks to a running KiCad, so there is no board outside an open document.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/kicad.py"
+  },
+  "LoadBoard": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "The IPC API has no standalone file loader; it operates on documents open in KiCad. Open the board in the PCB editor, or use kicad-cli for batch work.",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+  "NewBoard": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "Creating a board file from scratch is not part of the IPC API in this version.",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+  "SaveBoard": {
+    "status": "partial",
+    "ipc": "kipy.board.Board.save_as",
+    "note": "Board.save() writes the open document; Board.save_as(filename, overwrite=...) writes a copy. Only the board currently open in KiCad can be saved.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "Refresh": {
+    "status": "partial",
+    "ipc": "kipy.board.Board.push_commit",
+    "note": "There is no explicit redraw call. Wrap edits in Board.begin_commit()/push_commit(); the editor refreshes and the change becomes undoable.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "UpdateUserInterface": {
+    "status": "partial",
+    "ipc": "kipy.board.Board.push_commit",
+    "note": "Same as Refresh: the editor updates when a commit is pushed, there is no direct UI hook.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "ActionPlugin": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "The IPC plugin system has no base class. Ship a plugin.json declaring your actions plus an entrypoint script that connects with kipy.KiCad(); `swig2ipc skeleton` writes the manifest.",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+  "FromMM": {
+    "status": "mapped",
+    "ipc": "kipy.util.units.from_mm",
+    "note": "Returns integer nanometres, the internal unit used throughout kipy.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/util/units.py"
+  },
+  "ToMM": {
+    "status": "mapped",
+    "ipc": "kipy.util.units.to_mm",
+    "note": "Takes integer nanometres and returns millimetres as a float.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/util/units.py"
+  },
+  "IU_PER_MM": {
+    "status": "partial",
+    "ipc": "kipy.util.units.from_mm",
+    "note": "No scale constant is exported; convert through from_mm()/to_mm() instead of multiplying by a factor.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/util/units.py"
+  },
+  "VECTOR2I": {
+    "status": "mapped",
+    "ipc": "kipy.geometry.Vector2",
+    "note": "Vector2.from_xy(x, y) builds one from integer nanometre coordinates.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/geometry.py"
+  },
+  "wxPoint": {
+    "status": "partial",
+    "ipc": "kipy.geometry.Vector2",
+    "note": "wxPoint was already removed from the SWIG API in KiCad 7; Vector2 is the IPC equivalent and has no wx dependency.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/geometry.py"
+  },
+  "wxPointMM": {
+    "status": "partial",
+    "ipc": "kipy.geometry.Vector2",
+    "note": "Build it explicitly: Vector2.from_xy(from_mm(x), from_mm(y)).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/geometry.py"
+  },
+  "EDA_ANGLE": {
+    "status": "mapped",
+    "ipc": "kipy.geometry.Angle",
+    "note": "Angle stores degrees; use Angle.from_degrees()/.degrees.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/geometry.py"
+  },
+  "BOX2I": {
+    "status": "mapped",
+    "ipc": "kipy.geometry.Box2",
+    "note": "Bounding boxes are returned as Box2 (see Board.get_item_bounding_box).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/geometry.py"
+  },
+  "BOARD": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board",
+    "note": "A client-side handle on the board document open in KiCad, not an in-memory board file.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "FOOTPRINT": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.FootprintInstance",
+    "note": "FootprintInstance is a footprint placed on the board; its library definition is FootprintInstance.definition (kipy.board_types.Footprint).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_TRACK": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Track",
+    "note": "Straight track segment with .start/.end/.width/.layer.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_ARC": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.ArcTrack",
+    "note": "Arc-shaped track; Board.get_tracks() returns Track and ArcTrack objects.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_VIA": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Via",
+    "note": "Via geometry lives in its pad stack (Via.padstack).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PAD": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Pad",
+    "note": "Pad shape and drill are described by Pad.padstack (kipy.board_types.PadStack).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "ZONE": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Zone",
+    "note": "Filled areas are available as Zone.filled_polygons.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_TEXT": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.BoardText",
+    "note": "Text attributes are on BoardText.attributes (kipy.common_types.TextAttributes).",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_TEXTBOX": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.BoardTextBox",
+    "note": "Returned together with BoardText from Board.get_text().",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_SHAPE": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.BoardShape",
+    "note": "Concrete subclasses are BoardSegment/BoardArc/BoardCircle/BoardRectangle/BoardPolygon/BoardBezier; to_concrete_board_shape() narrows a generic shape.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_GROUP": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Group",
+    "note": "Group.items lists the KIIDs of its members.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "PCB_DIMENSION_BASE": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Dimension",
+    "note": "Concrete kinds are AlignedDimension, OrthogonalDimension, RadialDimension, LeaderDimension and CenterDimension.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "NETINFO_ITEM": {
+    "status": "mapped",
+    "ipc": "kipy.board_types.Net",
+    "note": "Net has .name and .code; Board.get_nets() lists them.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "GetFootprints": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_footprints",
+    "note": "Returns a sequence of FootprintInstance for the open board.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetTracks": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_tracks",
+    "note": "Returns Track and ArcTrack objects. Unlike the SWIG BOARD.GetTracks(), vias are not included: use Board.get_vias().",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetPads": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_pads",
+    "note": "Board-wide pad list; pads of one footprint are FootprintInstance.definition.pads.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetZones": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_zones",
+    "note": "Returns Zone objects, including rule areas.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetDrawings": {
+    "status": "partial",
+    "ipc": "kipy.board.Board.get_shapes",
+    "note": "The SWIG drawings list is split up: get_shapes(), get_text(), get_dimensions() and get_reference_images().",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetNetsByName": {
+    "status": "partial",
+    "ipc": "kipy.board.Board.get_nets",
+    "note": "No name-keyed map is returned; get_nets() gives a sequence of Net that you index by .name yourself.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetCurrentSelection": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_selection",
+    "note": "Also add_to_selection()/remove_from_selection()/clear_selection().",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "Add": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.create_items",
+    "note": "BOARD.Add(item) becomes board.create_items(item); the server assigns the new KIIDs.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "Remove": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.remove_items",
+    "note": "Also remove_items_by_id() when you only hold KIIDs.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetPosition": {
+    "status": "partial",
+    "ipc": "kipy.board_types.FootprintInstance.position",
+    "note": "Positions are per-type properties rather than one BOARD_ITEM method: FootprintInstance.position, Track.start/.end, BoardText.position, and so on.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "SetPosition": {
+    "status": "partial",
+    "ipc": "kipy.board_types.FootprintInstance.position",
+    "note": "Assign to the property and push the item back with Board.update_items(); local changes are not sent automatically.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "GetLayer": {
+    "status": "partial",
+    "ipc": "kipy.board_types.Track.layer",
+    "note": "Each item type exposes its own .layer property holding a BoardLayer enum value; Board.get_layer_name() turns it into a string.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "GetReference": {
+    "status": "partial",
+    "ipc": "kipy.board_types.FootprintInstance.reference_field",
+    "note": "The reference is a Field object: footprint.reference_field.text.value.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "GetValue": {
+    "status": "partial",
+    "ipc": "kipy.board_types.FootprintInstance.value_field",
+    "note": "The value is a Field object: footprint.value_field.text.value.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_types.py"
+  },
+  "GetLayerName": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_layer_name",
+    "note": "Takes a BoardLayer enum value; Board.get_layer_by_name() is the inverse.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetCopperLayerCount": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_copper_layer_count",
+    "note": "Board.get_enabled_layers() and get_visible_layers() cover the related SWIG calls.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetTitleBlock": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.get_title_block_info",
+    "note": "Returns a TitleBlockInfo; write it back with set_title_block_info().",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "GetDesignSettings": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "kipy.board_rules (present in the 0.8.0 wheel, absent from the 0.8.0 source tag) wraps design rule types, but that module fails to import (its generated protobuf stubs are out of sync) and no Board accessor exists. Stackup and copper layer count are reachable via Board.get_stackup()/get_copper_layer_count().",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+  "ZONE_FILLER": {
+    "status": "mapped",
+    "ipc": "kipy.board.Board.refill_zones",
+    "note": "One call replaces constructing a filler and calling Fill(); it can block until KiCad finishes.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board.py"
+  },
+  "PLOT_CONTROLLER": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "kipy.board_jobs (present in the 0.8.0 wheel, absent from the 0.8.0 source tag) wraps plot/export job settings for the KiCad 11 API, but that module fails to import (its generated protobuf stubs are out of sync) and no job runner is exposed; call kicad-cli from your plugin to plot.",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
+  },
+  "GetBuildVersion": {
+    "status": "mapped",
+    "ipc": "kipy.kicad.KiCad.get_version",
+    "note": "Returns a KiCadVersion; get_api_version() reports the API version of the running instance.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/kicad.py"
+  },
+  "SETTINGS_MANAGER": {
+    "status": "unmapped",
+    "ipc": null,
+    "note": "KiCad's settings manager is not exposed over IPC. KiCad.get_plugin_settings_path() gives your plugin a directory for its own settings.",
+    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/kicad.py"
+  }
+}
