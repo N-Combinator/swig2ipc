@@ -48,6 +48,9 @@ def build_report(root: Path) -> dict[str, Any]:
             "action_plugin_classes": action_plugin_classes,
             "unmapped_symbols": by_status[mapping.STATUS_UNMAPPED],
             "unknown_symbols": by_status[mapping.STATUS_UNKNOWN],
+            # Files whose SWIG usage could not be determined: the counts above do
+            # not cover them, so a report with a non-empty list is incomplete.
+            "unparsed_files": scan.unparsed_files,
         },
         "symbols": {name: symbols[name] for name in sorted(symbols)},
         "findings": findings,
@@ -63,7 +66,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         "# SWIG -> IPC readiness report",
         "",
         f"- Source tree: `{report['root']}`",
-        f"- Python files scanned: {summary['files_scanned']}",
+        f"- Python files scanned: {summary['files_scanned']} "
+        f"({len(summary['unparsed_files'])} could not be parsed)",
         f"- SWIG API uses found: {summary['findings']} "
         f"({summary['symbols']} distinct symbols)",
         f"- Mapping table: kicad-python {meta['kicad_python_version']}, "
@@ -86,6 +90,7 @@ def render_markdown(report: dict[str, Any]) -> str:
     for title, key in (
         ("Unmapped symbols", "unmapped_symbols"),
         ("Unknown symbols", "unknown_symbols"),
+        ("Unparsed files", "unparsed_files"),
     ):
         lines += ["", f"## {title}", ""]
         if summary[key]:

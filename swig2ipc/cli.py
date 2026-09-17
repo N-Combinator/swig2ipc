@@ -36,6 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="none",
         help="exit 1 when unmapped symbols (or, with 'unknown', unmapped or unknown ones) are found",
     )
+    scan.add_argument(
+        "--fail-on-warnings",
+        action="store_true",
+        help="also exit 1 when the scan was incomplete (a file failed to parse, "
+        "or `from pcbnew import *` hid its symbols)",
+    )
 
     skeleton = subparsers.add_parser("skeleton", help="write an IPC plugin manifest skeleton")
     skeleton.add_argument("--name", required=True, help="human readable plugin name")
@@ -72,6 +78,11 @@ def _cmd_scan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.fail_on == "unknown":
         failing += counts[mapping.STATUS_UNKNOWN]
     if args.fail_on != "none" and failing:
+        return EXIT_FAIL_ON
+    # Warnings never move the --fail-on gate on their own: a file the scanner could
+    # not read says nothing about the symbols it uses. --fail-on-warnings opts into
+    # treating that incompleteness as a failure too.
+    if args.fail_on_warnings and report["warnings"]:
         return EXIT_FAIL_ON
     return EXIT_OK
 

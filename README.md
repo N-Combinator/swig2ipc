@@ -37,11 +37,14 @@ swig2ipc scan path/to/plugin                      # JSON report on stdout
 swig2ipc scan path/to/plugin --format markdown    # Markdown report
 swig2ipc scan path/to/plugin --fail-on unmapped   # exit 1 if anything is unmapped
 swig2ipc scan path/to/plugin --fail-on unknown    # exit 1 if anything is unmapped or unknown
+swig2ipc scan path/to/plugin --fail-on-warnings   # exit 1 if the scan was incomplete
 ```
 
 Every `.py` file under the directory is parsed. `.git`, `.venv`, `venv`, `__pycache__` and
-any directory holding a `pyvenv.cfg` are skipped. A file that fails to parse is listed under
-`warnings` as `path:line: reason` instead of aborting the scan.
+any directory holding a `pyvenv.cfg` are skipped. Sources are handed to `ast` as bytes, so a
+UTF-8 BOM and a PEP 263 coding cookie (`# -*- coding: latin-1 -*-`) are honoured exactly as
+CPython honours them. A file that still fails to parse is listed under `warnings` as
+`path:line: reason`, and under `summary.unparsed_files`, instead of aborting the scan.
 
 Each use of the SWIG API is reported as `{"file", "line", "symbol", "kind"}`, sorted by file
 then line, with `kind` one of:
@@ -53,11 +56,16 @@ then line, with `kind` one of:
 | `action-plugin` | a class whose bases include `pcbnew.ActionPlugin` (or an `ActionPlugin` imported from `pcbnew`); here `symbol` is the name of *your* class |
 
 The report also carries a `summary` (counts per status, the plugin's action plugin classes,
-and the lists of unmapped and unknown symbols), the per-symbol mapping (`symbols`), and
-`warnings`.
+the lists of unmapped and unknown symbols, and `unparsed_files`), the per-symbol mapping
+(`symbols`), and `warnings`.
 
 Exit codes: `0` success, `1` the `--fail-on` threshold was hit, `2` usage error (missing
 directory, bad option, …).
+
+`--fail-on` looks only at symbol statuses: warnings never fail it on their own, because a
+file the scanner could not read says nothing about the symbols it uses. If you want an
+incomplete scan to be an error too — in CI, say — add `--fail-on-warnings`, or check that
+`summary.unparsed_files` is empty in the JSON report.
 
 #### Limitations
 

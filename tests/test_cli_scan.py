@@ -98,3 +98,37 @@ def test_no_subcommand_is_a_usage_error():
     with pytest.raises(SystemExit) as excinfo:
         main([])
     assert excinfo.value.code == 2
+
+
+def test_bom_and_cookie_sources_still_reach_the_fail_on_gate(tmp_path: Path, capsys):
+    """A BOM or a coding cookie must not hide SWIG usage from --fail-on."""
+    (tmp_path / "bom.py").write_bytes(
+        b"\xef\xbb\xbfimport pcbnew\npcbnew.LoadBoard('x')\npcbnew.TotallyUnknownThing()\n"
+    )
+    (tmp_path / "latin.py").write_bytes(
+        b"# -*- coding: latin-1 -*-\n# caf\xe9\nimport pcbnew\npcbnew.SaveBoard('x', None)\n"
+    )
+    code, out = run(["scan", str(tmp_path), "--fail-on", "unmapped"], capsys)
+    report = json.loads(out)
+    assert report["warnings"] == []
+    assert report["summary"]["unmapped_symbols"] == ["LoadBoard"]
+    assert report["summary"]["unknown_symbols"] == ["TotallyUnknownThing"]
+    # the latin-1 file was read: its SaveBoard call is in the report too
+    assert report["symbols"]["SaveBoard"]["status"] == "partial"
+    assert code == 1
+    assert run(["scan", str(tmp_path), "--fail-on", "unknown"], capsys)[0] == 1
+
+
+def test_warnings_alone_do_not_fail_the_gate(tmp_path: Path, capsys):
+    (tmp_path / "broken.py").write_text("def f(:\n")
+    code, out = run(["scan", str(tmp_path), "--fail-on", "unknown"], capsys)
+    assert code == 0
+    assert json.loads(out)["summary"]["unparsed_files"] == ["broken.py"]
+
+
+def test_fail_on_warnings_flags_an_incomplete_scan(tmp_path: Path, capsys):
+    (tmp_path / "broken.py").write_text("def f(:\n")
+    assert run(["scan", str(tmp_path), "--fail-on-warnings"], capsys)[0] == 1
+
+    (tmp_path / "broken.py").write_text("import pcbnew\n")
+    assert run(["scan", str(tmp_path), "--fail-on-warnings"], capsys)[0] == 0
