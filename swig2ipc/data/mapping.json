@@ -285,8 +285,8 @@
   "GetDesignSettings": {
     "status": "unmapped",
     "ipc": null,
-    "note": "kipy.board_rules wraps design rule types, but in kicad-python 0.8.0 that module fails to import (its generated protobuf stubs are out of sync) and no Board accessor exists. Stackup and copper layer count are reachable via Board.get_stackup()/get_copper_layer_count().",
-    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_rules.py"
+    "note": "kipy.board_rules (present in the 0.8.0 wheel, absent from the 0.8.0 source tag) wraps design rule types, but that module fails to import (its generated protobuf stubs are out of sync) and no Board accessor exists. Stackup and copper layer count are reachable via Board.get_stackup()/get_copper_layer_count().",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
   },
   "ZONE_FILLER": {
     "status": "mapped",
@@ -297,8 +297,8 @@
   "PLOT_CONTROLLER": {
     "status": "unmapped",
     "ipc": null,
-    "note": "kipy.board_jobs wraps plot/export job settings for the KiCad 11 API, but in kicad-python 0.8.0 that module fails to import (its generated protobuf stubs are out of sync) and no job runner is exposed; call kicad-cli from your plugin to plot.",
-    "source_url": "https://gitlab.com/kicad/code/kicad-python/-/blob/0.8.0/kipy/board_jobs.py"
+    "note": "kipy.board_jobs (present in the 0.8.0 wheel, absent from the 0.8.0 source tag) wraps plot/export job settings for the KiCad 11 API, but that module fails to import (its generated protobuf stubs are out of sync) and no job runner is exposed; call kicad-cli from your plugin to plot.",
+    "source_url": "https://dev-docs.kicad.org/en/apis-and-binding/ipc-api/for-addon-developers/"
   },
   "GetBuildVersion": {
     "status": "mapped",

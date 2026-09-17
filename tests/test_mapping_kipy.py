@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 from importlib.metadata import version
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,10 @@ pytest.importorskip(
 )
 
 ENTRIES = mapping.entries()
+
+#: Prefix of a source_url pointing into the kicad-python repository.
+SOURCE_PREFIX = "https://gitlab.com/kicad/code/kicad-python/-/blob/"
+
 IPC_PATHS = sorted(
     (symbol, entry["ipc"]) for symbol, entry in ENTRIES.items() if entry["ipc"] is not None
 )
@@ -59,3 +64,19 @@ def test_every_mapped_or_partial_entry_is_checked():
 @pytest.mark.parametrize(("symbol", "path"), IPC_PATHS, ids=[s for s, _ in IPC_PATHS])
 def test_ipc_path_resolves(symbol: str, path: str):
     assert resolve(path) is not None
+
+
+@pytest.mark.parametrize("symbol", sorted(ENTRIES))
+def test_source_url_points_at_a_file_that_exists(symbol: str):
+    """A source_url into kicad-python must name a file the package really ships.
+
+    Checked against the installed package rather than over the network, so a link
+    that rotted (or that never existed at the pinned ref) fails CI offline.
+    """
+    url = ENTRIES[symbol]["source_url"]
+    if not url.startswith(SOURCE_PREFIX):
+        pytest.skip("documentation URL, not a kicad-python source file")
+    ref, _, relpath = url[len(SOURCE_PREFIX) :].partition("/")
+    assert ref == mapping.meta()["kicad_python_version"], f"{symbol}: unpinned source_url"
+    site_packages = Path(importlib.import_module("kipy").__file__).parent.parent
+    assert (site_packages / relpath).is_file(), f"{symbol}: {relpath} is not in kicad-python {ref}"
