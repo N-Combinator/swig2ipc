@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from swig2ipc.scanner import scan_tree
@@ -138,3 +139,28 @@ def test_unparsed_files_are_tracked(tmp_path: Path):
     result = scan_tree(tmp_path)
     assert result.unparsed_files == ["broken.py", "unknown_codec.py"]
     assert len(result.warnings) == 2
+
+
+def _deep_elif_chain(branches: int) -> str:
+    """Source for a ``if/elif`` chain nested ``branches`` deep (machine-generated code)."""
+    lines = ["def f(x):", "    if x == 0:", "        return 0"]
+    for i in range(1, branches):
+        lines += [f"    elif x == {i}:", f"        return {i}"]
+    return "\n".join(lines) + "\n"
+
+
+def test_deeply_nested_file_is_a_warning_not_a_crash(tmp_path: Path):
+    # Deep enough that both ast.parse and the visitor exhaust the interpreter stack,
+    # whatever the ambient recursion limit is.
+    (tmp_path / "generated_table.py").write_text(_deep_elif_chain(sys.getrecursionlimit() * 2))
+    (tmp_path / "plugin.py").write_text("import pcbnew\npcbnew.GetBoard()\n")
+
+    result = scan_tree(tmp_path)
+
+    assert result.unparsed_files == ["generated_table.py"]
+    assert result.warnings == ["generated_table.py:1: file too deeply nested to analyse (RecursionError)"]
+    # The rest of the tree is still reported.
+    assert findings_for(result, "plugin.py") == [
+        (1, "pcbnew", "import"),
+        (2, "GetBoard", "module-call"),
+    ]

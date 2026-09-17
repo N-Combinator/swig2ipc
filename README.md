@@ -43,8 +43,10 @@ swig2ipc scan path/to/plugin --fail-on-warnings   # exit 1 if the scan was incom
 Every `.py` file under the directory is parsed. `.git`, `.venv`, `venv`, `__pycache__` and
 any directory holding a `pyvenv.cfg` are skipped. Sources are handed to `ast` as bytes, so a
 UTF-8 BOM and a PEP 263 coding cookie (`# -*- coding: latin-1 -*-`) are honoured exactly as
-CPython honours them. A file that still fails to parse is listed under `warnings` as
-`path:line: reason`, and under `summary.unparsed_files`, instead of aborting the scan.
+CPython honours them. A file that still fails to parse — a syntax error, an unreadable file,
+or one nested too deeply for the interpreter stack, as machine-generated code can be — is
+listed under `warnings` as `path:line: reason`, and under `summary.unparsed_files`, instead
+of aborting the scan.
 
 Each use of the SWIG API is reported as `{"file", "line", "symbol", "kind"}`, sorted by file
 then line, with `kind` one of:

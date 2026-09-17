@@ -16,6 +16,9 @@ SKIP_DIRS = frozenset({".git", ".venv", "venv", "__pycache__"})
 #: Marker file that identifies a directory as a virtual environment.
 VENV_MARKER = "pyvenv.cfg"
 
+#: Warning text for a file whose syntax tree is too deep or too large to handle.
+_TOO_LARGE = "file too deeply nested to analyse"
+
 KIND_IMPORT = "import"
 KIND_MODULE_CALL = "module-call"
 KIND_ACTION_PLUGIN = "action-plugin"
@@ -141,6 +144,11 @@ def scan_file(path: Path, relpath: str) -> tuple[list[Finding], list[str], bool]
     decoding rules apply: a UTF-8 BOM and a PEP 263 coding cookie
     (``# -*- coding: latin-1 -*-``) are honoured exactly as CPython would honour them.
     Decoding the bytes ourselves would turn both into unparseable files.
+
+    Both building and walking the tree recurse once per nesting level, so a deeply
+    nested file (a machine-generated ``elif`` chain, a long ``a + b + c + ...``
+    expression) can exhaust the interpreter stack. That is reported like any other
+    unreadable file rather than aborting the whole scan.
     """
     try:
         source = path.read_bytes()
@@ -152,8 +160,13 @@ def scan_file(path: Path, relpath: str) -> tuple[list[Finding], list[str], bool]
         return [], [f"{relpath}:{exc.lineno or 1}: syntax error ({exc.msg})"], False
     except ValueError as exc:  # e.g. source containing null bytes
         return [], [f"{relpath}:1: could not parse file ({exc})"], False
+    except (RecursionError, MemoryError) as exc:
+        return [], [f"{relpath}:1: {_TOO_LARGE} ({exc.__class__.__name__})"], False
     visitor = _PcbnewVisitor(relpath)
-    visitor.visit(tree)
+    try:
+        visitor.visit(tree)
+    except (RecursionError, MemoryError) as exc:
+        return [], [f"{relpath}:1: {_TOO_LARGE} ({exc.__class__.__name__})"], False
     return visitor.findings, visitor.warnings, True
 
 
