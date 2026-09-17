@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-import tomllib
 from importlib.metadata import version
 from pathlib import Path
 
 import pytest
 
 import swig2ipc
+
+try:  # tomllib is stdlib from 3.11; on 3.10 the `dev` extra brings tomli
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - only on Python 3.10
+    import tomli as tomllib
 
 PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 

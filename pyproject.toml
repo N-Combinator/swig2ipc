@@ -24,8 +24,13 @@ dependencies = []
 
 [project.optional-dependencies]
 # Test-only. kicad-python is never needed to run swig2ipc; the test suite uses it
-# to check every "ipc" path in the mapping table against the real package.
-dev = ["pytest>=7", "kicad-python==0.8.0"]
+# to check every "ipc" path in the mapping table against the real package. tomli
+# is the tomllib stand-in on 3.10, where tomllib is not in the stdlib yet.
+dev = [
+  "pytest>=7",
+  "kicad-python==0.8.0",
+  "tomli>=1.1.0; python_version < '3.11'",
+]
 
 [project.scripts]
 swig2ipc = "swig2ipc.cli:main"
