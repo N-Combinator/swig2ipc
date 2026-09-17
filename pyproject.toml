@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "swig2ipc"
+version = "0.1.0"
+description = "Static readiness report for KiCad plugins moving from the SWIG pcbnew API to the IPC API"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "N Combinator" }]
+keywords = ["kicad", "pcbnew", "ipc", "kicad-python", "migration"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Code Generators",
+]
+# Runtime is stdlib only, on purpose: the scan must work anywhere, offline.
+dependencies = []
+
+[project.optional-dependencies]
+# Test-only. kicad-python is never needed to run swig2ipc; the test suite uses it
+# to check every "ipc" path in the mapping table against the real package.
+dev = ["pytest>=7", "kicad-python==0.8.0"]
+
+[project.scripts]
+swig2ipc = "swig2ipc.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/N-Combinator/swig2ipc"
+Issues = "https://github.com/N-Combinator/swig2ipc/issues"
+
+[tool.setuptools]
+packages = ["swig2ipc", "swig2ipc.data"]
+
+[tool.setuptools.package-data]
+"swig2ipc.data" = ["mapping.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

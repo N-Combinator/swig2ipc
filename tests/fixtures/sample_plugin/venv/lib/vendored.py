@@ -1,0 +1,3 @@
+import pcbnew
+
+pcbnew.GetBoard()
