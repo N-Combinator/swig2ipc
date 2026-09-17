@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -65,6 +66,12 @@ def _cmd_scan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         parser.error(f"no such directory: {directory}")
     if not directory.is_dir():
         parser.error(f"not a directory: {directory}")
+    try:
+        # An unreadable directory *inside* the tree is a warning and the scan goes
+        # on; an unreadable root would produce an empty report that looks clean.
+        os.scandir(directory).close()
+    except OSError as exc:
+        parser.error(f"could not read directory {directory}: {exc.strerror or exc}")
 
     report = build_report(directory)
     if args.format == "markdown":

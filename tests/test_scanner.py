@@ -1,5 +1,8 @@
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 from swig2ipc.scanner import scan_tree
 
@@ -164,3 +167,72 @@ def test_deeply_nested_file_is_a_warning_not_a_crash(tmp_path: Path):
         (1, "pcbnew", "import"),
         (2, "GetBoard", "module-call"),
     ]
+
+
+def test_star_import_finds_action_plugin_and_known_names(star_plugin: Path):
+    result = scan_tree(star_plugin)
+    found = findings_for(result, "wireit.py")
+
+    # `from pcbnew import *` binds no name the AST can see, so the class base and
+    # the bare calls are attributed to pcbnew heuristically.
+    assert (3, "*", "import") in found
+    assert (11, "StarPlugin", "action-plugin") in found
+    assert (11, "ActionPlugin", "module-call") in found
+    assert (17, "GetBoard", "module-call") in found
+    assert (18, "SaveBoard", "module-call") in found
+
+    heuristic = {(f.line, f.symbol) for f in result.findings if f.heuristic}
+    assert heuristic == {
+        (11, "StarPlugin"),
+        (11, "ActionPlugin"),
+        (17, "GetBoard"),
+        (18, "SaveBoard"),
+    }
+    assert any("from pcbnew import *" in warning for warning in result.warnings)
+
+
+def test_star_import_does_not_claim_names_the_file_defines(star_plugin: Path):
+    result = scan_tree(star_plugin)
+    # wireit.py defines its own GetTracks(), so its two uses are not pcbnew's.
+    assert [f for f in result.findings if f.symbol == "GetTracks"] == []
+    # explicit.py has no star import at all, so its bare GetBoard() is nobody's.
+    assert findings_for(result, "explicit.py") == []
+
+
+def test_bare_names_need_a_star_import(tmp_path: Path):
+    (tmp_path / "plain.py").write_text("board = GetBoard()\n")
+    assert scan_tree(tmp_path).findings == []
+
+
+def test_unreadable_directory_is_a_warning_not_a_silent_gap(tmp_path: Path):
+    if os.geteuid() == 0:
+        pytest.skip("root can read a 0o000 directory")
+    (tmp_path / "plugin.py").write_text("import pcbnew\npcbnew.GetBoard()\n")
+    secret = tmp_path / "secret"
+    secret.mkdir()
+    (secret / "hidden.py").write_text("import pcbnew\npcbnew.LoadBoard('x')\n")
+    secret.chmod(0o000)
+    try:
+        result = scan_tree(tmp_path)
+    finally:
+        secret.chmod(0o755)
+
+    assert result.unparsed_files == ["secret"]
+    assert len(result.warnings) == 1
+    assert result.warnings[0].startswith("secret:1: could not list directory (PermissionError")
+    # The readable part of the tree is still scanned.
+    assert findings_for(result, "plugin.py") == [
+        (1, "pcbnew", "import"),
+        (2, "GetBoard", "module-call"),
+    ]
+
+
+def test_undecodable_filename_is_escaped_not_a_surrogate(tmp_path: Path, undecodable_file):
+    undecodable_file(tmp_path)
+    result = scan_tree(tmp_path)
+
+    assert result.files_scanned == 1
+    (name,) = {f.file for f in result.findings}
+    assert name == "caf\\xe9_plugin.py"
+    # The whole point: every path in the result survives a UTF-8 encode.
+    name.encode("utf-8")

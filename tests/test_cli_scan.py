@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -132,3 +133,53 @@ def test_fail_on_warnings_flags_an_incomplete_scan(tmp_path: Path, capsys):
 
     (tmp_path / "broken.py").write_text("import pcbnew\n")
     assert run(["scan", str(tmp_path), "--fail-on-warnings"], capsys)[0] == 0
+
+
+def test_star_import_plugin_fails_the_unmapped_gate(star_plugin: Path, capsys):
+    code, out = run(["scan", str(star_plugin), "--fail-on", "unmapped"], capsys)
+    report = json.loads(out)
+
+    assert report["summary"]["action_plugin_classes"] == ["wireit.py:11 StarPlugin"]
+    assert "ActionPlugin" in report["summary"]["unmapped_symbols"]
+    # A legacy plugin that KiCad 11 will break must not get a clean bill of health.
+    assert code == 1
+
+    heuristic = [f for f in report["findings"] if f.get("heuristic")]
+    assert {f["symbol"] for f in heuristic} == {
+        "StarPlugin",
+        "ActionPlugin",
+        "GetBoard",
+        "SaveBoard",
+    }
+    for finding in report["findings"]:
+        assert set(finding) <= {"file", "line", "symbol", "kind", "heuristic"}
+
+
+def test_markdown_survives_an_undecodable_filename(tmp_path: Path, capsys, undecodable_file):
+    undecodable_file(tmp_path)
+
+    code, out = run(["scan", str(tmp_path), "--format", "markdown"], capsys)
+    assert code == 0
+    assert "caf\\xe9_plugin.py" in out
+    out.encode("utf-8")  # would raise on a lone surrogate
+
+
+def test_json_report_of_an_undecodable_filename_is_valid(tmp_path: Path, capsys, undecodable_file):
+    undecodable_file(tmp_path)
+
+    code, out = run(["scan", str(tmp_path)], capsys)
+    assert code == 0
+    report = json.loads(out.encode("utf-8").decode("utf-8"))
+    assert report["summary"]["files_scanned"] == 1
+
+
+def test_unreadable_root_is_a_usage_error(tmp_path: Path):
+    if os.geteuid() == 0:
+        pytest.skip("root can read a 0o000 directory")
+    tmp_path.chmod(0o000)
+    try:
+        with pytest.raises(SystemExit) as excinfo:
+            main(["scan", str(tmp_path)])
+    finally:
+        tmp_path.chmod(0o755)
+    assert excinfo.value.code == 2

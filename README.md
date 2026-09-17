@@ -46,7 +46,9 @@ UTF-8 BOM and a PEP 263 coding cookie (`# -*- coding: latin-1 -*-`) are honoured
 CPython honours them. A file that still fails to parse — a syntax error, an unreadable file,
 or one nested too deeply for the interpreter stack, as machine-generated code can be — is
 listed under `warnings` as `path:line: reason`, and under `summary.unparsed_files`, instead
-of aborting the scan.
+of aborting the scan. A directory that cannot be listed is reported the same way, so an
+unreadable subtree is never silently missing from the report; an unreadable *root* is a
+usage error (exit `2`).
 
 Each use of the SWIG API is reported as `{"file", "line", "symbol", "kind"}`, sorted by file
 then line, with `kind` one of:
@@ -56,6 +58,21 @@ then line, with `kind` one of:
 | `import` | `import pcbnew`, `import pcbnew as X`, `from pcbnew import Y` |
 | `module-call` | attribute access on the module or an alias (`pcbnew.GetBoard()`, `X.FromMM(1)`) or use of a from-imported name |
 | `action-plugin` | a class whose bases include `pcbnew.ActionPlugin` (or an `ActionPlugin` imported from `pcbnew`); here `symbol` is the name of *your* class |
+
+A finding may carry `"heuristic": true`. That means it could not be proven from the file's
+own bindings: after `from pcbnew import *` the names pcbnew exports cannot be known without
+importing KiCad, so every bare name that the mapping table knows — plus the `ActionPlugin`
+base — is attributed to `pcbnew`, unless the file binds that name itself (a local
+`def GetTracks():` wins). This is what makes the common legacy shape
+
+```python
+from pcbnew import *
+
+class MyPlugin(ActionPlugin):
+    ...
+```
+
+show up as an action plugin and fail `--fail-on unmapped`, instead of passing as clean.
 
 The report also carries a `summary` (counts per status, the plugin's action plugin classes,
 the lists of unmapped and unknown symbols, and `unparsed_files`), the per-symbol mapping
@@ -74,8 +91,9 @@ incomplete scan to be an error too — in CI, say — add `--fail-on-warnings`, 
 - Only module-level uses are tracked. Method calls on objects you got back from the API —
   `board.GetFootprints()`, `track.GetWidth()` — are not attributed to `pcbnew`, because
   static analysis cannot tell a KiCad object from any other object.
-- `from pcbnew import *` is reported as an import of `*` plus a warning; the symbols it
-  pulls in cannot be resolved statically.
+- `from pcbnew import *` is reported as an import of `*` plus a warning, and the names it
+  probably bound are matched heuristically (see above). Symbols outside the mapping table
+  cannot be spotted in such a file at all, which is what the warning is for.
 - The scan is per-file: names re-exported through your own helper modules are not followed.
 
 ### `swig2ipc skeleton`

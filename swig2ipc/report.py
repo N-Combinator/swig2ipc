@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__, mapping
-from .scanner import KIND_ACTION_PLUGIN, ScanResult, scan_tree
+from .scanner import KIND_ACTION_PLUGIN, ScanResult, printable, scan_tree
 
 
 def build_report(root: Path) -> dict[str, Any]:
@@ -38,7 +38,7 @@ def build_report(root: Path) -> dict[str, Any]:
 
     return {
         "tool": {"name": "swig2ipc", "version": __version__},
-        "root": str(Path(root)),
+        "root": printable(str(Path(root))),
         "mapping_table": mapping.meta(),
         "summary": {
             "files_scanned": scan.files_scanned,
