@@ -117,6 +117,12 @@ def printable(text: str) -> str:
 class _PcbnewVisitor(ast.NodeVisitor):
     """Collects SWIG API uses in a single module.
 
+    The module is walked twice: first for every import anywhere in the file, then
+    for the uses. A single pass in text order would only link a use to an import
+    written above it, and imports are not always written first — plugins import
+    ``pcbnew`` lazily inside a function, or guard it behind a ``try``, while the
+    calls sit at module level higher up the file.
+
     Tracks three kinds of name bindings: aliases of the ``pcbnew`` module itself
     (``import pcbnew as pcb``), names imported out of it
     (``from pcbnew import GetBoard as gb``) and, after ``from pcbnew import *``,
@@ -137,34 +143,47 @@ class _PcbnewVisitor(ast.NodeVisitor):
         # Needed before any star import is seen, because the names the module
         # binds itself win over the ones a star import would pull in.
         self._bound = bound_names(node)
+        self._collect_imports(node)
         self.generic_visit(node)
+        self.findings.sort(key=lambda f: (f.line, f.kind, f.symbol))
 
-    # -- imports ---------------------------------------------------------
-    def visit_Import(self, node: ast.Import) -> None:
+    # -- imports (first pass) --------------------------------------------
+    def _collect_imports(self, tree: ast.Module) -> None:
+        """Record every ``pcbnew`` import in the file, wherever it sits.
+
+        Done before the uses are walked so that a call written above its import
+        line — or above the function that imports the module — is still linked.
+        """
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                self._collect_import(node)
+            elif isinstance(node, ast.ImportFrom):
+                self._collect_import_from(node)
+
+    def _collect_import(self, node: ast.Import) -> None:
         for alias in node.names:
             if alias.name == SWIG_MODULE or alias.name.startswith(SWIG_MODULE + "."):
                 bound = alias.asname or alias.name.split(".")[0]
                 self.module_aliases.add(bound)
                 self._add(node.lineno, SWIG_MODULE, KIND_IMPORT)
-        self.generic_visit(node)
 
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        if node.level == 0 and node.module == SWIG_MODULE:
-            for alias in node.names:
-                self._add(node.lineno, alias.name, KIND_IMPORT)
-                if alias.name == "*":
-                    self.star_names = star_import_names() - self._bound
-                    self.warnings.append(
-                        f"{self.relpath}:{node.lineno}: `from pcbnew import *` hides which "
-                        "symbols are used; bare names known to the mapping table are "
-                        "attributed to pcbnew heuristically, so statuses for this file "
-                        "may be incomplete"
-                    )
-                else:
-                    self.imported_names[alias.asname or alias.name] = alias.name
-        self.generic_visit(node)
+    def _collect_import_from(self, node: ast.ImportFrom) -> None:
+        if node.level != 0 or node.module != SWIG_MODULE:
+            return
+        for alias in node.names:
+            self._add(node.lineno, alias.name, KIND_IMPORT)
+            if alias.name == "*":
+                self.star_names = star_import_names() - self._bound
+                self.warnings.append(
+                    f"{self.relpath}:{node.lineno}: `from pcbnew import *` hides which "
+                    "symbols are used; bare names known to the mapping table are "
+                    "attributed to pcbnew heuristically, so statuses for this file "
+                    "may be incomplete"
+                )
+            else:
+                self.imported_names[alias.asname or alias.name] = alias.name
 
-    # -- uses ------------------------------------------------------------
+    # -- uses (second pass) ----------------------------------------------
     def visit_Attribute(self, node: ast.Attribute) -> None:
         value = node.value
         if isinstance(value, ast.Name) and value.id in self.module_aliases:

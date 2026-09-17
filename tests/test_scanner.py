@@ -199,6 +199,41 @@ def test_star_import_does_not_claim_names_the_file_defines(star_plugin: Path):
     assert findings_for(result, "explicit.py") == []
 
 
+def test_uses_above_the_import_line_are_still_linked(late_import_plugin: Path):
+    """The file is walked twice, so text order does not decide what counts."""
+    result = scan_tree(late_import_plugin)
+    found = findings_for(result, "bottom_import.py")
+    assert (11, "pcbnew", "import") in found
+    assert (12, "ToMM", "import") in found
+    # every use sits above the imports that bind the names
+    assert (4, "BoardReport", "action-plugin") in found
+    assert (4, "ActionPlugin", "module-call") in found
+    assert (6, "GetBoard", "module-call") in found
+    assert (7, "Refresh", "module-call") in found
+    assert (8, "ToMM", "module-call") in found
+    # nothing found this way is a guess: the imports are right there in the file
+    assert [f for f in result.findings if f.heuristic] == []
+
+
+def test_lazy_import_inside_a_later_function_is_linked(late_import_plugin: Path):
+    result = scan_tree(late_import_plugin)
+    found = findings_for(result, "lazy_import.py")
+    assert (14, "pcbnew", "import") in found
+    assert (5, "ToMM", "module-call") in found
+    assert (5, "GetBoard", "module-call") in found
+    assert (9, "LoadBoard", "module-call") in found
+
+
+def test_star_import_below_the_uses_still_applies(tmp_path: Path):
+    (tmp_path / "late_star.py").write_text(
+        "def run():\n    return GetBoard()\n\n\nfrom pcbnew import *  # noqa: E402\n"
+    )
+    result = scan_tree(tmp_path)
+    found = [(f.line, f.symbol, f.kind, f.heuristic) for f in result.findings]
+    assert (2, "GetBoard", "module-call", True) in found
+    assert (5, "*", "import", False) in found
+
+
 def test_bare_names_need_a_star_import(tmp_path: Path):
     (tmp_path / "plain.py").write_text("board = GetBoard()\n")
     assert scan_tree(tmp_path).findings == []

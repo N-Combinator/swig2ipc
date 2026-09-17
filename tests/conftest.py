@@ -20,6 +20,12 @@ def star_plugin() -> Path:
 
 
 @pytest.fixture
+def late_import_plugin() -> Path:
+    """A plugin whose `pcbnew` imports sit below the code that uses them."""
+    return FIXTURES / "late_import_plugin"
+
+
+@pytest.fixture
 def undecodable_file() -> Callable[[Path], Path]:
     """Writes a .py file whose name is not valid UTF-8 (a Windows zip classic)."""
 

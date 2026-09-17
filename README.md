@@ -59,6 +59,10 @@ then line, with `kind` one of:
 | `module-call` | attribute access on the module or an alias (`pcbnew.GetBoard()`, `X.FromMM(1)`) or use of a from-imported name |
 | `action-plugin` | a class whose bases include `pcbnew.ActionPlugin` (or an `ActionPlugin` imported from `pcbnew`); here `symbol` is the name of *your* class |
 
+Each file is walked twice: every `pcbnew` import first, then the uses. Text order does not
+decide what counts, so a call written above its `import pcbnew` line — or above the helper
+that imports the module lazily — is still linked to the module.
+
 A finding may carry `"heuristic": true`. That means it could not be proven from the file's
 own bindings: after `from pcbnew import *` the names pcbnew exports cannot be known without
 importing KiCad, so every bare name that the mapping table knows — plus the `ActionPlugin`
